@@ -2,6 +2,7 @@
 
 import tensorflow as tf
 
+
 @tf.keras.utils.register_keras_serializable(package="mytf2")
 class PositionEmbedding(tf.keras.layers.Layer):
   """Creates a positional embedding.
@@ -21,9 +22,9 @@ class PositionEmbedding(tf.keras.layers.Layer):
   """
 
   def __init__(self,
-         max_length,
-         initializer="glorot_uniform",
-         **kwargs):
+               max_length,
+               initializer="glorot_uniform",
+               **kwargs):
     super(PositionEmbedding, self).__init__(**kwargs)
     self._max_length = max_length
     if max_length is None:

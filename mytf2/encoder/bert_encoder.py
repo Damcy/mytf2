@@ -13,38 +13,38 @@ class Bert(tf.keras.layers.Layer):
     def __init__(self,
                  vocab_size,
                  hidden_size=768,
-                 num_layers=12,
+                 num_hidden_layers=12,
                  num_attention_heads=12,
-                 max_sequence_length=512,
+                 max_seq_len=512,
                  intermediate_size=3072,
                  type_vocab_size=2,
-                 activation="gelu",
-                 dropout_rate=0.1,
-                 attention_dropout_rate=0.1,
+                 hidden_act="gelu",
+                 hidden_dropout_prob=0.1,
+                 attention_probs_dropout_prob=0.1,
                  initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
                  **kwargs):
         super(Bert, self).__init__(**kwargs)
 
-        self.activation = get_activation(activation)
+        self.activation = get_activation(hidden_act)
         self.initializer = tf.keras.initializers.get(initializer)
 
         self.vocab_size = vocab_size
         self.hidden_size = hidden_size
-        self.num_layers = num_layers
+        self.num_hidden_layers = num_hidden_layers
         self.num_attention_heads = num_attention_heads
-        self.max_sequence_length = max_sequence_length
+        self.max_seq_len = max_seq_len
         self.intermediate_size = intermediate_size
         self.type_vocab_size = type_vocab_size
-        self.dropout_rate = dropout_rate
-        self.attention_dropout_rate = attention_dropout_rate
+        self.dropout_rate = hidden_dropout_prob
+        self.attention_dropout_rate = attention_probs_dropout_prob
 
     def get_config(self):
         config = {
             'vocab_size': self.vocab_size,
             'hidden_size': self.hidden_size,
-            'num_layers': self.num_layers,
+            'num_hidden_layers': self.num_hidden_layers,
             'num_attention_heads': self.num_attention_heads,
-            'max_sequence_length': self.max_sequence_length,
+            'max_seq_len': self.max_seq_len,
             'intermediate_size': self.intermediate_size,
             'type_vocab_size': self.type_vocab_size,
             'activation': serialize_activation(self.activation),
@@ -65,7 +65,7 @@ class Bert(tf.keras.layers.Layer):
 
         self._position_embedding_layer = PositionEmbedding(
             initializer=self.initializer,
-            max_length=self.max_sequence_length,
+            max_length=self.max_seq_len,
             name='position_embeddings')
 
         self._type_embedding_layer = OnDeviceEmbedding(
@@ -82,7 +82,7 @@ class Bert(tf.keras.layers.Layer):
             name='embeddings/dropout', rate=self.dropout_rate)
 
         self._transformer_layers = []
-        for i in range(self.num_layers):
+        for i in range(self.num_hidden_layers):
             layer = Transformer(
                 num_attention_heads=self.num_attention_heads,
                 intermediate_dim=self.intermediate_size,

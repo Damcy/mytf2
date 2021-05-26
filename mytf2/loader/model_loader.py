@@ -37,7 +37,7 @@ def load_bert_weights_from_official_checkpoint(block, config, checkpoint_file,
 
   if load_position_embedding:
     block._position_embedding_layer.set_weights([
-      loader('bert/embeddings/position_embeddings')[:config['max_sequence_length'], :],
+      loader('bert/embeddings/position_embeddings')[:config['max_seq_len'], :],
     ])
 
   if load_type_embedding:
