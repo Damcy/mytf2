@@ -102,7 +102,7 @@ class Bert(tf.keras.layers.Layer):
     def call(self, inputs, training=None):
         word_ids, mask, type_ids = inputs
         word_embeddings = self._word_embedding_layer(word_ids)
-        position_embeddings = self._position_embedding_layer(word_embeddings)
+        position_embeddings = self._position_embedding_layer(word_ids)
         type_embeddings = self._type_embedding_layer(type_ids)
         embeddings = tf.keras.layers.Add()(
             [word_embeddings, position_embeddings, type_embeddings])
