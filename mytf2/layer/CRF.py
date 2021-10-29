@@ -15,7 +15,7 @@ class CRF(tf.keras.layers.Layer):
     def call(self, inputs, training=None):
         logits = inputs["logits"]
         seq_lens = inputs["seq_lens"]
-        pred_ids, _ = tfa.text.crf_decode(logits, self.transition_params, seq_lens)
+        pred_ids, _ = tfa.text.crf_decode(logits, self.trans_params, seq_lens)
         if training:
             labels = inputs["labels"]
             log_likelihood, self.trans_params = tfa.text.crf_log_likelihood(
