@@ -21,7 +21,7 @@ class CRF(tf.keras.layers.Layer):
             log_likelihood, self.trans_params = tfa.text.crf_log_likelihood(
                                                     logits, labels, seq_lens,
                                                     transition_params=self.trans_params)
-            loss = tf.reduce_sum(-log_likelihood)
-            return {"loss": loss, "pred_ids": pred_ids}
+            loss = tf.reduce_sum(-log_likelihood, name="crf_loss")
+            return {"crf_loss": loss, "pred_ids": pred_ids}
         else:
             return {"pred_ids": pred_ids}
