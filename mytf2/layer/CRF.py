@@ -12,16 +12,11 @@ class CRF(tf.keras.layers.Layer):
         )
     
     @tf.function
-    def call(self, inputs, training=None):
-        logits = inputs["logits"]
-        seq_lens = inputs["seq_lens"]
+    def call(self, inputs):
+        logits, seq_lens, labels = inputs
         pred_ids, _ = tfa.text.crf_decode(logits, self.trans_params, seq_lens)
-        if training:
-            labels = inputs["labels"]
-            log_likelihood, self.trans_params = tfa.text.crf_log_likelihood(
-                                                    logits, labels, seq_lens,
-                                                    transition_params=self.trans_params)
-            loss = tf.reduce_sum(-log_likelihood, name="crf_loss")
-            return {"crf_loss": loss, "pred_ids": pred_ids}
-        else:
-            return {"pred_ids": pred_ids}
+        log_likelihood, _ = tfa.text.crf_log_likelihood(
+                                                logits, labels, seq_lens,
+                                                transition_params=self.trans_params)
+        loss = tf.reduce_sum(-log_likelihood, name="crf_loss")
+        return {"crf_loss": loss, "pred_ids": pred_ids}
