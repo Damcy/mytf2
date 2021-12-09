@@ -2,6 +2,7 @@
 # -*- encoding=utf-8 -*-
 # author: Ian
 # e-mail: stmayue@gmail.com
-# description: 
+# description:
 
-
+# crf
+from .CRF import CRF
