@@ -14,7 +14,7 @@ from mytf2.layer.activation import get_activation, serialize_activation
 
 
 @tf.keras.utils.register_keras_serializable(package="mytf2")
-class LayoutLM(tf.keras.layers.Layer):
+class LayoutLMEncoder(tf.keras.layers.Layer):
   def __init__(self,
                vocab_size,
                hidden_size=768,
@@ -28,7 +28,7 @@ class LayoutLM(tf.keras.layers.Layer):
                attention_dropout_rate=0.1,
                initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
                **kwargs):
-    super(LayoutLM, self).__init__(**kwargs)
+    super(LayoutLMEncoder, self).__init__(**kwargs)
     self.activation = get_activation(activation)
     self.initializer = tf.keras.initializers.get(initializer)
 
@@ -56,37 +56,38 @@ class LayoutLM(tf.keras.layers.Layer):
       'attention_dropout_rate': self.attention_dropout_rate,
       'initializer': tf.keras.initializers.serialize(self.initializer),
     }
-    base_config = super(LayoutLM, self).get_config()
+    base_config = super(LayoutLMEncoder, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def build(self, input_shape):
     embedding_width = self.hidden_size
-    self._word_embedding_layer = OnDeviceEmbedding(
-      vocab_size=self.vocab_size,
-      embedding_width=embedding_width,
-      initializer=self.initializer,
-      name='word_embeddings'
-    )
+    with tf.name_scope("embeddings"):
+      self._word_embedding_layer = OnDeviceEmbedding(
+        vocab_size=self.vocab_size,
+        embedding_width=embedding_width,
+        initializer=self.initializer,
+        name='word_embeddings'
+      )
 
-    self._x_position_embedding_layer = OnDeviceEmbedding(
-      vocab_size=self.max_position_embeddings,
-      embedding_width=embedding_width,
-      initializer=self.initializer,
-      name="x_position_embeddings"
-    )
+      self._x_position_embedding_layer = OnDeviceEmbedding(
+        vocab_size=self.max_position_embeddings,
+        embedding_width=embedding_width,
+        initializer=self.initializer,
+        name="x_position_embeddings"
+      )
 
-    self._y_position_embedding_layer = OnDeviceEmbedding(
-      vocab_size=self.max_position_embeddings,
-      embedding_width=embedding_width,
-      initializer=self.initializer,
-      name="y_position_embeddings"
-    )
+      self._y_position_embedding_layer = OnDeviceEmbedding(
+        vocab_size=self.max_position_embeddings,
+        embedding_width=embedding_width,
+        initializer=self.initializer,
+        name="y_position_embeddings"
+      )
 
-    self._embedding_norm_layer = tf.keras.layers.LayerNormalization(
-      name='embeddings/layer_norm', axis=-1, epsilon=1e-12, dtype=tf.float32)
+      self._embedding_norm_layer = tf.keras.layers.LayerNormalization(
+        name='layer_norm', axis=-1, epsilon=1e-12, dtype=tf.float32)
 
-    self._embedding_dropout_layer = tf.keras.layers.Dropout(
-      name='embeddings/dropout', rate=self.dropout_rate)
+      self._embedding_dropout_layer = tf.keras.layers.Dropout(
+        name='dropout', rate=self.dropout_rate)
 
     self._transformer_layers = []
     for i in range(self.num_layers):

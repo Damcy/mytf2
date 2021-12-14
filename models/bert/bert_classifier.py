@@ -11,7 +11,7 @@ import os
 import tensorflow as tf
 import tensorflow.keras as keras
 
-from mytf2.encoder import Bert
+from mytf2.encoder import BertEncoder
 from mytf2.layer.optimizer import create_optimizer
 from mytf2.loader import load_bert_weights_from_official_checkpoint
 
@@ -61,7 +61,7 @@ def build_model(bert_config, num_class, learning_rate,
   segment_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32, name="segment_ids")
 
   # bert model
-  bert = Bert(**bert_config)
+  bert = BertEncoder(**bert_config)
   seq_output, _ = bert([input_ids, input_mask, segment_ids])
   # cls
   last_layer_output = seq_output[-1]

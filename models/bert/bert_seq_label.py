@@ -8,14 +8,14 @@
 import tensorflow as tf
 import tensorflow.keras as keras
 
-from mytf2.encoder import Bert
+from mytf2.encoder import BertEncoder
 from mytf2.layer import CRF
 
 
 class SeqBert(keras.Model):
   def __init__(self, model_config, label_num):
     super(SeqBert, self).__init__()
-    self.bert = Bert(**model_config)
+    self.bert = BertEncoder(**model_config)
     self.dropout = keras.layers.Dropout(model_config['hidden_dropout_prob'])
     self.dense = keras.layers.Dense(label_num, kernel_initializer=keras.initializers.TruncatedNormal(stddev=0.02),
                                     activation="softmax", name="logits")

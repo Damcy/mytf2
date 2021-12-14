@@ -8,7 +8,7 @@ from mytf2.layer.activation import get_activation, serialize_activation
 
 
 @tf.keras.utils.register_keras_serializable(package="mytf2")
-class Bert(tf.keras.layers.Layer):
+class BertEncoder(tf.keras.layers.Layer):
 
     def __init__(self,
                  vocab_size,
@@ -23,7 +23,7 @@ class Bert(tf.keras.layers.Layer):
                  attention_probs_dropout_prob=0.1,
                  initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
                  **kwargs):
-        super(Bert, self).__init__(**kwargs)
+        super(BertEncoder, self).__init__(**kwargs)
 
         self.activation = get_activation(hidden_act)
         self.initializer = tf.keras.initializers.get(initializer)
@@ -52,7 +52,7 @@ class Bert(tf.keras.layers.Layer):
             'attention_dropout_rate': self.attention_dropout_rate,
             'initializer': tf.keras.initializers.serialize(self.initializer),
         }
-        base_config = super(Bert, self).get_config()
+        base_config = super(BertEncoder, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
     def build(self, input_shape):

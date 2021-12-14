@@ -5,6 +5,6 @@
 # description: 
 
 
-from .bert_encoder import Bert
-from .layoutlm_encoder import LayoutLM
+from .bert_encoder import BertEncoder
+from .layoutlm_encoder import LayoutLMEncoder
 
