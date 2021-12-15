@@ -50,8 +50,7 @@ def get_dataset_batch(tf_record_file, sequence_len, vocab_size, batch_size,
     "input_x0": tf.io.FixedLenFeature([sequence_len], tf.int64),
     "input_y0": tf.io.FixedLenFeature([sequence_len], tf.int64),
     "input_x1": tf.io.FixedLenFeature([sequence_len], tf.int64),
-    "input_y1": tf.io.FixedLenFeature([sequence_len], tf.int64),
-    "label_ids": tf.io.FixedLenFeature([sequence_len], tf.int64)
+    "input_y1": tf.io.FixedLenFeature([sequence_len], tf.int64)
   }
 
   def dynamic_maks(input_ids):
@@ -85,7 +84,7 @@ def get_dataset_batch(tf_record_file, sequence_len, vocab_size, batch_size,
     input_ids, label_mask = tf.py_function(dynamic_maks, inp=[ori_input_ids], Tout=[tf.int32, tf.int32])
     x = (input_ids, example["input_mask"], example["input_x0"], example["input_y0"],
          example["input_x1"], example["input_y1"])
-    y = {"output": example["label_ids"]}
+    y = {"output": example["input_ids"]}
     return x, y, label_mask
 
   dataset = tf.data.TFRecordDataset(tf_record_file)
