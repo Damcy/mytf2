@@ -84,9 +84,11 @@ def get_dataset_batch(tf_record_file, sequence_len, vocab_size, batch_size,
     # 80% of them replace by [MASK], 10% replace by random tokens, 10% keep the same
     ori_input_ids = example["input_ids"]
     input_ids, label_mask = tf.py_function(dynamic_maks, inp=[ori_input_ids], Tout=[tf.int32, tf.int32])
+    input_ids.set_shape([sequence_len])
+    label_mask.set_shape([sequence_len])
     x = (input_ids, example["input_mask"], example["input_x0"], example["input_y0"],
          example["input_x1"], example["input_y1"])
-    y = {"output": example["input_ids"]}
+    y = {"output_1": example["input_ids"]}
     return x, y, label_mask
 
   dataset = tf.data.TFRecordDataset(tf_record_file)
@@ -112,18 +114,18 @@ def main():
   # 定义优化器，从bert checkpoint初始化word embedding和Transformer参数
   optimizer = create_optimizer(arg.learning_rate, num_train_steps=arg.num_train_steps,
                                num_warmup_steps=arg.warm_up_steps, optimizer_type="lamb")
-  model.compile(optimizer, loss={"output": "sparse_categorical_crossentropy"},
-                metrics={"output": "sparse_categorical_accuracy"})
+  model.compile(optimizer, loss={"output_1": "sparse_categorical_crossentropy"},
+                metrics={"output_1": "sparse_categorical_accuracy"})
   if arg.bert_init_ckpt is not None and arg.bert_init_ckpt != "":
     print("load bert init ckpt from: %s".format(arg.bert_init_ckpt))
-    load_bert_weights_from_official_checkpoint(model.layoutLMEncoder, model_config,
+    load_bert_weights_from_official_checkpoint(model.layoutLMEncoder,
                                                arg.max_seq_len, arg.bert_init_ckpt,
                                                load_position_embedding=False,
                                                load_type_embedding=False,
                                                load_pooler_layer=False)
 
   # load training data 加载训练数据
-  train_data = get_dataset_batch(arg.train_file, arg.max_seq_len, model_config.vocab_size,
+  train_data = get_dataset_batch(arg.train_file, arg.max_seq_len, model_config["vocab_size"],
                                  arg.train_batch_size)
   # training
   model.fit(train_data, epochs=1, steps_per_epoch=arg.num_train_steps)
