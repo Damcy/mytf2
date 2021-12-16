@@ -8,6 +8,7 @@ import tensorflow as tf
 import tensorflow.keras as keras
 
 from mytf2.encoder import LayoutLMEncoder
+from mytf2.layer.activation.activation_utils import get_activation
 
 
 class LayoutLM(keras.Model):
@@ -21,7 +22,7 @@ class LayoutLM(keras.Model):
     with tf.name_scope("cls/prediction"):
       self.hidden = keras.layers.Dense(model_config["hidden_size"],
                                        kernel_initializer=initializer,
-                                       activation=model_config["activation"], name="transform")
+                                       activation=get_activation(model_config["activation"]), name="transform")
       self.layer_norm = keras.layers.LayerNormalization()
       self.dense = keras.layers.Dense(model_config["vocab_size"],
                                       kernel_initializer=initializer,

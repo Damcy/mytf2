@@ -31,6 +31,8 @@ def parse_option():
                      default=512, type=int)
   parse.add_argument("--num_train_steps", dest="num_train_steps", help="num train steps",
                      default=10000, type=int)
+  parse.add_argument("--warm_up_steps", dest="warm_up_steps", help="num warm up steps",
+                     default=1000, type=int)
   parse.add_argument("--train_batch_size", dest="train_batch_size", help="train batch size",
                      default=4096, type=int)
   parse.add_argument("--learning_rate", dest="learning_rate", help="learning rate",
@@ -101,7 +103,10 @@ def get_dataset_batch(tf_record_file, sequence_len, vocab_size, batch_size,
 def main():
   arg, _ = parse_option()
   model_config = json.load(open(arg.config_file, 'r'))
-  model = LayoutLM(**model_config)
+  model = LayoutLM(model_config)
+  # predict before summary
+  rand_input = np.random.randint(0, 2, arg.train_batch_size, arg.max_seq_len)
+  model.predict((rand_input, rand_input, rand_input, rand_input, rand_input, rand_input))
   model.summary()
 
   # 定义优化器，从bert checkpoint初始化word embedding和Transformer参数
