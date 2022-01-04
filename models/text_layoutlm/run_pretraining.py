@@ -31,6 +31,8 @@ def parse_option():
                      default=512, type=int)
   parse.add_argument("--num_train_steps", dest="num_train_steps", help="num train steps",
                      default=10000, type=int)
+  parse.add_argument("--save_model_freq", dest="save_model_freq", help="save model freq",
+                     default=1000, type=int)
   parse.add_argument("--warm_up_steps", dest="warm_up_steps", help="num warm up steps",
                      default=1000, type=int)
   parse.add_argument("--train_batch_size", dest="train_batch_size", help="train batch size",
@@ -104,6 +106,11 @@ def get_dataset_batch(tf_record_file, sequence_len, vocab_size, batch_size,
 
 def main():
   arg, _ = parse_option()
+  model_dir = os.path.join(arg.output_dir, "model")
+  os.mkdir(model_dir)
+  weight_dir = os.path.join(arg.output_dir, "weight")
+  os.mkdir(weight_dir)
+
   model_config = json.load(open(arg.config_file, 'r'))
   model = LayoutLM(model_config)
   # predict before summary
@@ -128,16 +135,16 @@ def main():
   train_data = get_dataset_batch(arg.train_file, arg.max_seq_len, model_config["vocab_size"],
                                  arg.train_batch_size)
   # training
-  model.fit(train_data, epochs=1, steps_per_epoch=arg.num_train_steps)
+  callbacks = [
+    tf.keras.callbacks.ModelCheckpoint(filepath=os.path.join(model_dir, "text-layout-{loss:.5f}"),
+                                       save_freq=arg.save_model_freq)
+  ]
+  model.fit(train_data, epochs=1, steps_per_epoch=arg.num_train_steps, callbacks=callbacks)
 
   # save the model
-  model_dir = os.path.join(arg.output_dir, "model")
-  os.mkdir(model_dir)
   final_ckpt_file = os.path.join(model_dir, "model.ckpt")
   model.save(final_ckpt_file)
   # save model's weight
-  weight_dir = os.path.join(arg.output_dir, "weight")
-  os.mkdir(weight_dir)
   final_weight_file = os.path.join(weight_dir, "ckpt")
   model.save_weights(final_weight_file)
 

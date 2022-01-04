@@ -39,3 +39,41 @@ class LayoutLM(keras.Model):
 
   def get_config(self):
     return {"model_config": self.model_config}
+
+
+def build_model_by_function(model_config):
+  sequence_length = model_config["max_sequence_length"]
+  # inputs
+  input_ids = keras.Input(shape=(sequence_length,), dtype=tf.int32, name="input_ids")
+  input_mask = keras.Input(shape=(sequence_length,), dtype=tf.int32, name="input_mask")
+  input_x0 = keras.Input(shape=(sequence_length,), dtype=tf.int32, name="input_x0")
+  input_y0 = keras.Input(shape=(sequence_length,), dtype=tf.int32, name="input_y0")
+  input_x1 = keras.Input(shape=(sequence_length,), dtype=tf.int32, name="input_x1")
+  input_y1 = keras.Input(shape=(sequence_length,), dtype=tf.int32, name="input_y1")
+  # encoder
+  encoder = LayoutLMEncoder(**model_config)
+  rep = encoder([input_ids, input_mask, [input_x0, input_y0, input_x1, input_y1]])
+  rep = rep[-1]
+  # mlm
+  initializer = keras.initializers.TruncatedNormal(stddev=0.02)
+  with tf.name_scope("cls/prediction"):
+    rep = keras.layers.Dense(
+      model_config["hidden_size"],
+      kernel_initializer=initializer,
+      activation=get_activation(model_config["activation"]),
+      name="transform"
+    )(rep)
+    rep = keras.layers.LayerNormalization(rep)
+    logits = keras.layers.Dense(
+      model_config["vocab_size"],
+      kernel_initializer=initializer,
+      activation="softmax",
+      name="output"
+    )(rep)
+  # model
+  model = keras.Model(
+    inputs=[input_ids, input_mask, input_x0, input_y0, input_x1, input_y1],
+    outputs=[logits]
+  )
+
+  return model
