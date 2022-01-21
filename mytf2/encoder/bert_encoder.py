@@ -15,7 +15,7 @@ class BertEncoder(tf.keras.layers.Layer):
                  hidden_size=768,
                  num_hidden_layers=12,
                  num_attention_heads=12,
-                 max_seq_len=512,
+                 max_position_embeddings=512,
                  intermediate_size=3072,
                  type_vocab_size=2,
                  hidden_act="gelu",
@@ -23,7 +23,7 @@ class BertEncoder(tf.keras.layers.Layer):
                  attention_probs_dropout_prob=0.1,
                  initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
                  **kwargs):
-        super(BertEncoder, self).__init__(**kwargs)
+        super(BertEncoder, self).__init__()
 
         self.activation = get_activation(hidden_act)
         self.initializer = tf.keras.initializers.get(initializer)
@@ -32,7 +32,7 @@ class BertEncoder(tf.keras.layers.Layer):
         self.hidden_size = hidden_size
         self.num_hidden_layers = num_hidden_layers
         self.num_attention_heads = num_attention_heads
-        self.max_seq_len = max_seq_len
+        self.max_position_embeddings = max_position_embeddings
         self.intermediate_size = intermediate_size
         self.type_vocab_size = type_vocab_size
         self.dropout_rate = hidden_dropout_prob
@@ -44,7 +44,7 @@ class BertEncoder(tf.keras.layers.Layer):
             'hidden_size': self.hidden_size,
             'num_hidden_layers': self.num_hidden_layers,
             'num_attention_heads': self.num_attention_heads,
-            'max_seq_len': self.max_seq_len,
+            'max_seq_len': self.max_position_embeddings,
             'intermediate_size': self.intermediate_size,
             'type_vocab_size': self.type_vocab_size,
             'activation': serialize_activation(self.activation),
@@ -65,7 +65,7 @@ class BertEncoder(tf.keras.layers.Layer):
 
         self._position_embedding_layer = PositionEmbedding(
             initializer=self.initializer,
-            max_length=self.max_seq_len,
+            max_length=self.max_position_embeddings,
             name='position_embeddings')
 
         self._type_embedding_layer = OnDeviceEmbedding(

@@ -69,9 +69,10 @@ def load_vocab(vocab_file):
 
 def convert_by_vocab(vocab, items):
     """Converts a sequence of [tokens|ids] using the vocab."""
+    unk = vocab.get('[UNK]', -1)
     output = []
     for item in items:
-        output.append(vocab.get(item, vocab['[UNK]']))
+        output.append(vocab.get(item, unk))
     return output
 
 
