@@ -2,7 +2,7 @@ import tensorflow as tf
 
 from mytf2.layer.embedding import OnDeviceEmbedding
 from mytf2.layer.embedding import PositionEmbedding
-from mytf2.layer.transformer import Transformer
+from mytf2.layer.transformer import TransformerEncoder
 from mytf2.layer.attention import SelfAttentionMask
 from mytf2.layer.activation import get_activation, serialize_activation
 
@@ -83,7 +83,7 @@ class BertEncoder(tf.keras.layers.Layer):
 
         self._transformer_layers = []
         for i in range(self.num_hidden_layers):
-            layer = Transformer(
+            layer = TransformerEncoder(
                 num_attention_heads=self.num_attention_heads,
                 intermediate_dim=self.intermediate_size,
                 intermediate_activation=self.activation,

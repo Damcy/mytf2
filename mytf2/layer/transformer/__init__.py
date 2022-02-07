@@ -5,5 +5,5 @@
 # created time: 2021-04-08 16:49:34
 
 
-from .transformer import Transformer
+from .transformer_encoder import TransformerEncoder
 

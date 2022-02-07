@@ -20,7 +20,7 @@ from mytf2.layer.attention import MultiHeadAttention
 
 
 @tf.keras.utils.register_keras_serializable(package="mytf2")
-class Transformer(tf.keras.layers.Layer):
+class TransformerEncoder(tf.keras.layers.Layer):
   """TransformerEncoderBlock layer.
 
   This layer implements the Transformer Encoder from
@@ -42,6 +42,7 @@ class Transformer(tf.keras.layers.Layer):
                norm_epsilon=1e-12,
                output_dropout=0.0,
                attention_dropout=0.0,
+               norm_first=False,
                **kwargs):
     """Initializes `TransformerEncoderBlock`.
 
@@ -58,7 +59,7 @@ class Transformer(tf.keras.layers.Layer):
       attention_dropout: Dropout probability for within the attention layer.
       **kwargs: keyword arguments/
     """
-    super(Transformer, self).__init__(**kwargs)
+    super(TransformerEncoder, self).__init__(**kwargs)
 
     self._num_heads = num_attention_heads
     self._intermediate_dim = intermediate_dim
@@ -67,6 +68,7 @@ class Transformer(tf.keras.layers.Layer):
     self._norm_epsilon = norm_epsilon
     self._output_dropout_prob = output_dropout
     self._attention_score_dropout_prob = attention_dropout
+    self._norm_first = norm_first
 
   def build(self, input_shape):
     # input_tensor = input_shape[0] if len(input_shape) == 2 else input_shape
@@ -121,7 +123,7 @@ class Transformer(tf.keras.layers.Layer):
             epsilon=self._norm_epsilon,
             dtype=tf.float32)
 
-    super(Transformer, self).build(input_shape)
+    super(TransformerEncoder, self).build(input_shape)
 
   def get_config(self):
     config = {
@@ -139,8 +141,10 @@ class Transformer(tf.keras.layers.Layer):
             tf.keras.initializers.serialize(self._kernel_initializer),
         "norm_epsilon":
             self._norm_epsilon,
+        "norm_first":
+            self._norm_first,
     }
-    base_config = super(Transformer, self).get_config()
+    base_config = super(TransformerEncoder, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def call(self, inputs, training=None):
@@ -152,6 +156,9 @@ class Transformer(tf.keras.layers.Layer):
     else:
       input_tensor, attention_mask, spacial_bias = (inputs, None, None)
 
+    source_tensor = input_tensor
+    if self._norm_first:
+      input_tensor = self._attention_layer_norm(input_tensor)
     attention_output, attention_weights = self._attention_layer(
       [input_tensor, input_tensor],
       spacial_bias=spacial_bias,
@@ -159,7 +166,10 @@ class Transformer(tf.keras.layers.Layer):
       return_attention_scores=True
     )
     attention_output = self._attention_output_dropout(attention_output, training=training)
-    attention_output = self._attention_layer_norm(input_tensor + attention_output)
+    if self._norm_first:
+      attention_output = source_tensor + attention_output
+    else:
+      attention_output = self._attention_layer_norm(input_tensor + attention_output)
     intermediate_output = self._intermediate_layer(attention_output)
     layer_output = self._output_layer(intermediate_output)
     layer_output = self._output_dropout(layer_output, training=training)

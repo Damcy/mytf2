@@ -1,0 +1,158 @@
+"""Keras-based TransformerDecoder block layer."""
+
+from unicodedata import name
+from numpy import dtype
+import tensorflow as tf
+from mytf2.layer.activation import get_activation, serialize_activation
+from mytf2.layer.attention import MultiHeadAttention
+
+
+@tf.keras.utils.register_keras_serializable(package="mytf2")
+class TransformerDecoder(tf.keras.layers.Layer):
+  """Transformer Decoder Layer
+  1. a multi-head self-attention mechanism
+  2. a encoder-decoder attention
+  3. a positionwise fully connnected feed-forward network
+  """
+  def __init__(self,
+               num_attention_heads=12,
+               intermediate_dim=3072,
+               intermediate_activation="gelu",
+               kernel_initializer="glorot_uniform",
+               norm_epsilon=1e-12,
+               output_dropout=0.0,
+               attention_dropout=0.0,
+               norm_first=False,
+               **kwargs):
+    """Initializes `TransformerDecoderBlock`.
+
+    Arguments:
+      num_attention_heads: Number of attention heads.
+      intermediate_dim: The output dimension of the first Dense layer in a two-layer
+        feedforward network.
+      intermediate_activation: The activation for the first Dense layer in a two-layer
+        feedforward network.
+      kernel_initializer: Initializer for dense layer kernels.
+      norm_epsilon: Epsilon value to initialize normalization layers.
+      output_dropout: Dropout probability for the post-attention and output
+        dropout.
+      attention_dropout: Dropout probability for within the attention layer.
+      **kwargs: keyword arguments/
+    """
+    super(TransformerDecoder, self).__init__(**kwargs)
+
+    self._num_heads = num_attention_heads
+    self._intermediate_dim = intermediate_dim
+    self._intermediate_activation = get_activation(intermediate_activation)
+    self._kernel_initializer = tf.keras.initializers.get(kernel_initializer)
+    self._norm_epsilon = norm_epsilon
+    self._output_dropout_prob = output_dropout
+    self._attention_score_dropout_prob = attention_dropout
+    self._norm_first = norm_first
+
+  def build(self, input_shape):
+    # input_tensor = input_shape[0] if len(input_shape) == 2 else input_shape
+    input_tensor = input_shape[0] if len(input_shape) > 1 else input_shape
+    input_tensor_shape = tf.TensorShape(input_tensor)
+    if len(input_tensor_shape.as_list()) != 3:
+      raise ValueError("TransformerDecoderBlock expects a three-dimensional "
+                       "input of shape [batch, sequence, width].")
+    batch_size, sequence_length, hidden_size = input_tensor_shape
+
+    if hidden_size % self._num_heads != 0:
+      raise ValueError(
+          "The input size (%d) is not a multiple of the number of attention "
+          "heads (%d)" % (hidden_size, self._num_heads))
+    self._attention_head_size = int(hidden_size // self._num_heads)
+    # self attention
+    self._self_attention_layer = MultiHeadAttention(
+        num_heads=self._num_heads,
+        key_dim=self._attention_head_size,
+        initializer=self._kernel_initializer,
+        dropout_prob=self._attention_score_dropout_prob,
+        name="self_attention")
+    self._self_attention_output_dropout = tf.keras.layers.Dropout(rate=self._output_dropout_prob)
+    self._self_attention_layer_norm = tf.keras.layers.LayerNormalization(
+        name="self_attention_layer_norm",
+        axis=-1,
+        epsilon=self._norm_epsilon,
+        dtype=tf.float32)
+    # encoder-decoder attention
+    self._enc_dec_attention_layer = MultiHeadAttention(
+        num_heads=self._num_heads,
+        key_dim=self._attention_head_size,
+        initializer=self._kernel_initializer,
+        dropout_prob=self._attention_score_dropout_prob,
+        name="enc_dec_attention")
+    self._enc_dec_attention_output_dropout = tf.keras.layers.Dropout(rate=self._output_dropout_prob)
+    self._enc_dec_attention_layer_norm = tf.keras.layers.LayerNormalization(
+        name="enc_dec_attention_layer_norm",
+        axis=-1,
+        epsilon=self._norm_epsilon,
+        dtype=tf.float32)
+    # FFN
+    self._intermediate_layer = tf.keras.layers.Dense(
+        self._intermediate_dim,
+        activation=self._intermediate_activation,
+        kernel_initializer=self._kernel_initializer,
+        name="intermediate")
+    self._output_layer = tf.keras.layers.Dense(
+        hidden_size,
+        kernel_initializer=self._kernel_initializer,
+        name="output")
+    self._output_dropout = tf.keras.layers.Dropout(rate=self._output_dropout_prob)
+    # Use float32 in layernorm for numeric stability.
+    self._output_layer_norm = tf.keras.layers.LayerNormalization(
+        name="output_layer_norm",
+        axis=-1,
+        epsilon=self._norm_epsilon,
+        dtype=tf.float32)
+
+    super(TransformerDecoder, self).build(input_shape)
+
+  def get_config(self):
+    config = {
+        "num_attention_heads":
+            self._num_heads,
+        "intermediate_dim":
+            self._intermediate_dim,
+        "intermediate_activation":
+            serialize_activation(self._intermediate_activation),
+        "output_dropout":
+            self._output_dropout_prob,
+        "attention_dropout":
+            self._attention_score_dropout_prob,
+        "kernel_initializer":
+            tf.keras.initializers.serialize(self._kernel_initializer),
+        "norm_epsilon":
+            self._norm_epsilon,
+        "norm_first":
+            self._norm_first,
+    }
+    base_config = super(TransformerDecoder, self).get_config()
+    return dict(list(base_config.items()) + list(config.items()))
+
+  def call(self, inputs, training=None):
+    if len(inputs) != 4:
+      raise ValueError("TransformerDecoder must have 4 inputs, but it got: %d" % len(inputs))
+    input_tensor, memory, enc_dec_attention_mask, self_attention_mask = inputs
+
+    source_tensor = input_tensor
+    if self._norm_first:
+      input_tensor = self._self_attention_layer_norm(input_tensor)
+    attention_output, attention_weights = self._self_attention_layer(
+      [input_tensor, input_tensor],
+      attention_mask=self_attention_mask,
+      return_attention_scores=True
+    )
+    attention_output = self._attention_output_dropout(attention_output, training=training)
+    attention_output = self._attention_layer_norm(input_tensor + attention_output)
+    intermediate_output = self._intermediate_layer(attention_output)
+    layer_output = self._output_layer(intermediate_output)
+    layer_output = self._output_dropout(layer_output, training=training)
+
+    # During mixed precision training, layer norm output is always fp32 for now.
+    # Casts fp32 for the subsequent add.
+    layer_output = tf.cast(layer_output, tf.float32)
+    return self._output_layer_norm(layer_output + attention_output)
+
